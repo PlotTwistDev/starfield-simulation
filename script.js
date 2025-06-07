@@ -4,14 +4,14 @@ class Starfield {
     this.config = config;
     this.state = {
       angleX: 0, angleY: 0, angleZ: 0,
-      // camX and camY are no longer needed for camera position
+      // camX: 0, camY: 0,
       yawDelta: 0, pitchDelta: 0,
       currentSpeedMultiplier: 1.0, // Kept for potential future use, but not changed
       pointerLocked: false,
       audioStarted: false,
-      fullDetail: true // State for effect toggling
+      fullDetail: true
     };
-
+    
     this.lastTime = performance.now();
 
     this.elements = {
@@ -19,8 +19,7 @@ class Starfield {
       skyboxContainer: null,
       starContainer: null,
       dustContainer: null,
-      audio: new Audio('ambient-space.mp3'),
-      uiModeIndicator: null // UI element for feedback
+      audio: new Audio('ambient-space.mp3')
     };
 
     this.particles = {
@@ -39,7 +38,7 @@ class Starfield {
     this.createAllParticles();
     this.setupAudio();
     this.setupEventListeners();
-    this.updateEffectDetail(); // Set initial UI state
+    this.updateEffectDetail();
     this.animate();
   }
 
@@ -63,7 +62,7 @@ class Starfield {
     this.elements.dustContainer = document.createElement('div');
     this.elements.dustContainer.id = 'dust-container';
     this.elements.scene.appendChild(this.elements.dustContainer);
-
+    
     // Performance Mode Indicator
     this.elements.uiModeIndicator = document.createElement('div');
     this.elements.uiModeIndicator.id = 'mode-indicator';
@@ -97,6 +96,7 @@ class Starfield {
       const y = (Math.random() - 0.5) * spreadY;
       const z = (Math.random() - 0.5) * distribution;
 
+      // PERFORMANCE: Set initial position via CSS vars, only Z will be updated later.
       particleEl.style.setProperty('--x', `${x}px`);
       particleEl.style.setProperty('--y', `${y}px`);
       particleEl.style.setProperty('--z', `${z}px`);
@@ -155,11 +155,11 @@ class Starfield {
     }
   }
 
+
   // --- ANIMATION & UPDATES ---
-  updateParticles(particleArray, baseSpeed, distribution, dt) {
+  updateParticles(particleArray, baseSpeed, distribution) {
     const halfDist = distribution / 2;
-    // speed is now in px/sec, scaled by dt
-    const speed = baseSpeed * dt * this.state.currentSpeedMultiplier;
+    const speed = baseSpeed * this.state.currentSpeedMultiplier;
     const isStar = (particleArray === this.particles.stars);
 
     for (const p of particleArray) {
@@ -168,66 +168,60 @@ class Starfield {
         p.z += distribution;
       }
 
-      // update CSS vars for perspective and rotation
+      // PERFORMANCE: Only update the CSS variables that change per-frame.
       p.el.style.setProperty('--z', `${p.z}px`);
       p.el.style.setProperty('--rot-x', `${-this.state.angleX}deg`);
       p.el.style.setProperty('--rot-y', `${-this.state.angleY}deg`);
       p.el.style.setProperty('--rot-z', `${-this.state.angleZ}deg`);
 
       if (isStar) {
+        // Opacity based on depth
         const normZ = (p.z + halfDist) / distribution;
         const opacity = 0.2 + normZ * 0.8;
         const baseOp = parseFloat(p.el.style.getPropertyValue('--star-opacity')) || 1;
         p.el.style.setProperty('--star-computed-opacity', Math.min(1, opacity * baseOp));
 
+        // NEW: Check proximity to camera and apply effect class
         const isNear = p.z < (-halfDist + this.config.PROXIMITY_THRESHOLD);
         p.el.classList.toggle('near-camera', isNear);
       }
     }
   }
 
-  animate(now = performance.now()) {
-    // 1) Compute time delta in seconds
-    const dt = (now - this.lastTime) / 1000;
-    this.lastTime = now;
-
+  animate() {
     const s = this.state;
     const c = this.config;
 
-    // 2) Update rotation angles based on per‐second speeds
-    s.angleY += (c.ANGULAR_SPEED_Y + s.yawDelta) * dt;
-    s.angleX += (c.ANGULAR_SPEED_X + s.pitchDelta) * dt;
-    s.angleZ += c.ANGULAR_SPEED_Z * dt;
+    s.angleY += c.ANGULAR_SPEED_Y + s.yawDelta;
+    s.angleX += c.ANGULAR_SPEED_X + s.pitchDelta;
+    s.angleZ += c.ANGULAR_SPEED_Z;
 
-    // 3) Decay any pointer‐driven deltas (frame‐rate–independent)
-    const decay = Math.pow(0.92, dt * 60);
-    s.yawDelta *= decay;
-    s.pitchDelta *= decay;
+    s.yawDelta *= 0.92;
+    s.pitchDelta *= 0.92;
 
-    // 4) (Optional) Smooth FOV “punch” if you’re doing perspective jumps
-    // this.currentFOV += (this.targetFOV - this.currentFOV) * 0.1 * dt * 60;
-    // this.elements.scene.style.perspective = `${this.currentFOV}px`;
+    const radY = (s.angleY * Math.PI) / 180;
+    const radX = (s.angleX * Math.PI) / 180;
+    s.camX = Math.cos(radY * 0.7) * c.CAM_RADIUS_X;
+    s.camY = Math.sin(radX * 0.5) * c.CAM_RADIUS_Y;
 
-    // 5) Apply a single CSS transform to each layer
+    // Simplified transform, removed camera shake
     const containerTransform = `
-      rotateX(${s.angleX}deg)
-      rotateY(${s.angleY}deg)
-      rotateZ(${s.angleZ}deg)
-    `;
+          translateX(${-s.camX}px)
+          translateY(${-s.camY}px)
+          rotateX(${s.angleX}deg)
+          rotateY(${s.angleY}deg)
+          rotateZ(${s.angleZ}deg)`;
+
     this.elements.starContainer.style.transform = containerTransform;
     this.elements.dustContainer.style.transform = containerTransform;
     this.elements.skyboxContainer.style.transform = containerTransform;
 
-    // 6) Move your particles using the same dt
-    this.updateParticles(this.particles.stars, c.BASE_STAR_SPEED, c.STAR_DISTRIBUTION, dt);
-    this.updateParticles(this.particles.dusts, c.BASE_DUST_SPEED, c.DUST_DISTRIBUTION, dt);
+    this.updateParticles(this.particles.stars, c.BASE_STAR_SPEED, c.STAR_DISTRIBUTION);
+    this.updateParticles(this.particles.dusts, c.BASE_DUST_SPEED, c.DUST_DISTRIBUTION);
 
-    // 7) Loop
     requestAnimationFrame(this.animate);
   }
-
 }
-
 
 
 // --- CONFIGURATION & LAUNCH ---
@@ -238,19 +232,18 @@ const config = {
   DUST_DISTRIBUTION: 1500,
   BASE_STAR_SPEED: 0.2,
   BASE_DUST_SPEED: 0.5,
-  ANGULAR_SPEED_X: 1.2,
-  ANGULAR_SPEED_Y: 3.2,
-  ANGULAR_SPEED_Z: 2,
+  ANGULAR_SPEED_X: 0.15,
+  ANGULAR_SPEED_Y: 0.40,
+  ANGULAR_SPEED_Z: 0.25,
+  CAM_RADIUS_X: 300,
+  CAM_RADIUS_Y: 200,
   PROXIMITY_THRESHOLD: 150,
 };
-
-// We don't need CAM_RADIUS anymore, but we still need to spread the stars
-// out a bit wider than their Z distribution to avoid seeing the edges.
-config.STAR_SPREAD_X = config.STAR_DISTRIBUTION + 500;
-config.STAR_SPREAD_Y = config.STAR_DISTRIBUTION + 500;
+config.STAR_SPREAD_X = config.STAR_DISTRIBUTION + 2 * config.CAM_RADIUS_X;
+config.STAR_SPREAD_Y = config.STAR_DISTRIBUTION + 2 * config.CAM_RADIUS_Y;
 config.HALF_Z = config.STAR_DISTRIBUTION / 2;
 
 // Create and initialize the starfield.
 const starfield = new Starfield(config);
-starfield.init();      // your existing init
+starfield.init();
 requestAnimationFrame(starfield.animate);
