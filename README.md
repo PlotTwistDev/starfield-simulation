@@ -23,8 +23,6 @@ Click to engage pointer lock and fly through a dynamic field of stars and dust.
 
 ## 📁 Repository Structure
 
-## 📁 Repository Structure
-
 ```
 starfield-simulation/
 ├── index.html
