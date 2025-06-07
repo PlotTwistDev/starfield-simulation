@@ -1,242 +1,133 @@
-html,
-body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background-color: #000;
-    cursor: crosshair;
-}
+# 3D Starfield Simulation
 
-body.pointer-locked {
-    cursor: none;
-}
+An immersive, GPU-accelerated 3D starfield animation rendered in pure HTML/CSS/JavaScript.  
+Click to engage pointer lock and fly through a dynamic field of stars and dust.
 
-#scene {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    perspective: 800px;
-    perspective-origin: center;
-    overflow: hidden;
-    transition: perspective 0.5s ease-in-out;
-    /* For FOV punch */
-}
+---
 
-/* --- UI FEEDBACK (Updated) --- */
-#scene::after {
-    content: 'Click to Look Around';
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: rgba(255, 255, 255, 0.3);
-    font-family: monospace;
-    font-size: 14px;
-    pointer-events: none;
-    opacity: 1;
-    transition: opacity 0.5s;
-}
+## 🌐 Live Demo
 
-body.pointer-locked #scene::after {
-    opacity: 0;
-}
+▶️ [View it on GitHub Pages](https://plottwistdev.github.io/starfield-simulation/)
 
-/* --- NEW: Performance Mode Indicator --- */
-#mode-indicator {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    color: rgba(255, 255, 255, 0.5);
-    font-family: monospace;
-    font-size: 14px;
-    z-index: 100;
-    pointer-events: none;
-}
+---
 
+## ✨ Features
 
-/* --- VOLUMETRIC NEBULA (SKYBOX) --- */
-#skybox-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transform-style: preserve-3d;
-    will-change: transform;
-}
+- **Smooth, time-based animation**: Eliminates frame-rate “throbbing” by driving rotation and translation from elapsed time.  
+- **Configurable speeds**: Adjust static speeds in `config`, or dial up a dynamic `SPEED_MULTIPLIER` at runtime for “warp-drive.”  
+- **Pointer-locked look-around**: Click the scene to lock the pointer and swivel your view.  
+- **Detail toggle**: Press **D** to switch between full and basic visual detail.  
+- **GPU-hinted transforms**: Uses `will-change: transform;` for silky-smooth performance.
 
-.skybox-face {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 3000px;
-    height: 3000px;
-    margin-left: -1500px;
-    margin-top: -1500px;
+---
 
-    /* Common background properties are set here */
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+## 📁 Repository Structure
 
-    /* Make the nebula a bit more visible */
-    opacity: 0.61;
-    background-blend-mode: screen;
-    will-change: transform;
-}
+```
+starfield-simulation/
+├── index.html
+├── style.css
+├── script.js
+├── README.md
+└── docs/
+    └── screenshot.png   # optional demo image
+```
 
-/* --- NEW: Apply specific textures to each face --- */
-.skybox-face-front {
-    background-image: url('pz.png');
-}
+---
 
-.skybox-face-back {
-    background-image: url('nz.png');
-}
+## 🛠️ Getting Started
 
-.skybox-face-left {
-    background-image: url('nx.png');
-}
+### Prerequisites
 
-.skybox-face-right {
-    background-image: url('px.png');
-}
+- A modern web browser (Chrome, Firefox, Edge, Safari)
+- (Optional) A local HTTP server for pointer-lock to work consistently
 
-.skybox-face-top {
-    background-image: url('ny.png');
-}
+### Installation
 
-.skybox-face-bottom {
-    background-image: url('py.png');
-}
+1. **Clone the repo**  
+   ```bash
+   git clone https://github.com/your-username/starfield-simulation.git
+   cd starfield-simulation
+   ```
+2. **Open in browser**  
+   - Double-click `index.html`, **or**  
+   - Serve via a local server, e.g.:  
+     ```bash
+     npx http-server .
+     ```
+3. **Click the scene** to start the animation and lock your cursor.
 
+---
 
-/* Position each face to form a cube */
-.skybox-face-front {
-    transform: translateZ(1500px);
-}
+## ⚙️ Configuration
 
-.skybox-face-back {
-    transform: rotateY(180deg) translateZ(1500px);
-}
+All animation parameters live in the top of **`script.js`**:
 
-.skybox-face-left {
-    transform: rotateY(-90deg) translateZ(1500px);
-}
+```js
+const config = {
+  STAR_COUNT:        800,
+  DUST_COUNT:        100,
+  STAR_DISTRIBUTION: 1500,
+  DUST_DISTRIBUTION: 1500,
 
-.skybox-face-right {
-    transform: rotateY(90deg) translateZ(1500px);
-}
+  // Movement speeds in units-per-second
+  BASE_STAR_SPEED:   0.2,
+  BASE_DUST_SPEED:   0.5,
 
-.skybox-face-top {
-    transform: rotateX(90deg) translateZ(1500px);
-}
+  // Rotation speeds in degrees-per-second
+  ANGULAR_SPEED_X:   0.15,
+  ANGULAR_SPEED_Y:   0.40,
+  ANGULAR_SPEED_Z:   0.25,
 
-.skybox-face-bottom {
-    transform: rotateX(-90deg) translateZ(1500px);
-}
+  // Distance at which stars “pop” brighter
+  PROXIMITY_THRESHOLD: 150,
 
+  // Global runtime speed multiplier (1.0 = normal)
+  SPEED_MULTIPLIER:    1.0,
+};
+```
 
-#starfield-container,
-#dust-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transform-style: preserve-3d;
-    will-change: transform;
-}
+- **Static speed**: Raise `BASE_*` and `ANGULAR_SPEED_*` for a constant speed increase.  
+- **Runtime warp**:  
+  ```js
+  // 2× speed:
+  starfield.config.SPEED_MULTIPLIER = 2.0;
+  // back to normal:
+  starfield.config.SPEED_MULTIPLIER = 1.0;
+  ```
 
-.particle {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    border-radius: 50%;
-    will-change: transform, opacity, filter, box-shadow;
-    background-color: var(--particle-color, #fff);
+---
 
-    /* --- OPTIMIZATION: Use CSS variables for transform (Removed streak scale) --- */
-    transform:
-        translate3d(var(--x, 0px), var(--y, 0px), var(--z, 0px)) rotateZ(var(--rot-z, 0deg)) rotateY(var(--rot-y, 0deg)) rotateX(var(--rot-x, 0deg));
-}
+## 🎮 Controls
 
-.star {
-    width: var(--star-size, 3px);
-    height: var(--star-size, 3px);
-    /* --- OPTIMIZATION: Opacity controlled by a variable --- */
-    opacity: var(--star-computed-opacity, 1);
-    filter: blur(0.5px);
-}
+- **Click** the scene to engage pointer-lock.  
+- **Move mouse** (while locked) to yaw/pitch the view.  
+- **D** key: Toggle between **FULL** and **BASIC** visual detail.
 
-.dust {
-    width: var(--dust-size, 1px);
-    height: var(--dust-size, 1px);
-    opacity: 0.7;
-    filter: blur(0.2px);
-}
+---
 
+## ✍️ Customization
 
-/* --- ADVANCED STAR STYLES --- */
-.star.bright {
-    box-shadow: 0 0 8px 2px var(--particle-color);
-    filter: blur(1px);
-    z-index: 10;
-}
+- Swap in your own skybox textures by replacing the `.skybox-face-*` CSS backgrounds in **`style.css`**.  
+- Change particle counts, colors, and sizes in the `_createParticleSet` method.  
+- Add FOV effects by uncommenting and adjusting the “Smooth FOV punch” snippet in `animate()`.
 
-.star.bright::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: -400%;
-    width: 900%;
-    height: 50%;
-    margin-top: -25%;
-    background: var(--particle-color);
-    border-radius: 50%;
-    opacity: 0.15;
-    filter: blur(5px);
-    transform: scaleX(1.2);
-}
+---
 
-/* --- NEAR CAMERA EFFECTS (Replaces Hyperspace) --- */
-.star.near-camera {
-    /* Apply chromatic aberration and enhanced glow when a star is close */
-    box-shadow:
-        0 0 8px 2px var(--particle-color),
-        1px 0 1px 0px rgba(255, 0, 0, 0.8),
-        -1px 0 1px 0px rgba(0, 255, 255, 0.8);
-    filter: blur(0.5px);
-    z-index: 20;
-    /* Ensure it's on top */
-}
+## 🤝 Contributing
 
-/* --- NEW: BASIC PERFORMANCE MODE OVERRIDES --- */
-/* This class is toggled on the body via JavaScript */
-body.basic-effects .star.bright {
-    box-shadow: none;
-    filter: blur(0.5px);
-    /* Reset to basic star blur */
-}
+1. Fork the repo  
+2. Create a feature branch (`git checkout -b feature/foo`)  
+3. Commit your changes (`git commit -am "Add foo"`)  
+4. Push to the branch (`git push origin feature/foo`)  
+5. Open a Pull Request
 
-body.basic-effects .star.bright::before {
-    display: none;
-    /* Completely remove the expensive pseudo-element */
-}
+---
 
-body.basic-effects .star.near-camera {
-    box-shadow: none;
-    /* Remove expensive chromatic aberration shadow */
-}
+## 📄 License
 
-body.basic-effects #skybox-container {
-    display: none;
-    /* Hide the entire skybox */
-}
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
-body.basic-effects #dust-container {
-    display: none;
-    /* Hide all dust particles */
-}
+---
+
+> Built with ♥︎ for cosmic exploration. Enjoy the flight!
