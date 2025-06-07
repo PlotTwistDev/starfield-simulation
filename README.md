@@ -23,14 +23,12 @@ Click to engage pointer lock and fly through a dynamic field of stars and dust.
 
 ## 📁 Repository Structure
 
-\`\`\`
 ├── index.html
 ├── style.css
 ├── script.js
 ├── README.md
 └── docs/
     └── screenshot.png   # optional demo image
-\`\`\`
 
 ---
 
