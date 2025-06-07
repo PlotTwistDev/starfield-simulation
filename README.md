@@ -3,13 +3,7 @@
 An immersive, GPU-accelerated 3D starfield animation rendered in pure HTML/CSS/JavaScript.  
 Click to engage pointer lock and fly through a dynamic field of stars and dust.
 
----
 
-## 🚀 Demo
-
-![Starfield Screenshot](docs/screenshot.png)
-
----
 
 ## ✨ Features
 
